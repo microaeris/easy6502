@@ -96,32 +96,6 @@ p2DownKey:
   sta p2Direction
   rts
 
-nop
-nop
-nop
-nop
-nop
-nop
-nop
-nop
-nop
-nop
-nop
-nop
-nop
-nop
-nop
-nop
-nop
-nop
-nop
-nop
-nop
-nop
-nop
-nop
-nop
-
 ; Returns if a move is needed.
 ; Stores 1 in A if a move is needed.
 ; Stores 0 in A if move is not needed.
@@ -137,10 +111,10 @@ movingUpP1:
   ; Bounds check
   ; if paddle position == min position, return
   lda p1PaddleL
-  cmp minPosP1L
+  cmp #minPosP1L
   bne movingUpP1Do
   lda p1PaddleH
-  cmp minPosP1H
+  cmp #minPosP1H
   bne movingUpP1Do
   lda #false
   rts
@@ -158,10 +132,10 @@ movingDownP1:
   ; Bounds check
   ; if paddle position == max position, return
   lda p1PaddleL
-  cmp maxPosP1L
+  cmp #maxPosP1L
   bne movingDownP1Do
   lda p1PaddleH
-  cmp maxPosP1H
+  cmp #maxPosP1H
   bne movingDownP1Do
   lda #false
   rts
@@ -184,6 +158,32 @@ updateP2:
 ; Move the paddle by 1 pixel vertically.
 ; This subroutine erases 1 pixel in the opposite direction of the paddle's
 ; movement and draws one pixel in the direction of the paddle's movement.
+
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
 
 drawP1:
 ;   ; Prep arguments for calling drawAbovePaddle or drawBelowPaddle
@@ -218,18 +218,17 @@ drawP1:
   lda #0 ; paddle color
   ldx p1Direction
   cpx #movingUp
-  beq movingUpP1
+  beq drawUpP1
   cpx #movingDown
-  beq movingDownP1
+  beq drawDownP1
   jmp drawP1Done
-movingUpP1:
+drawUpP1:
   lda #$8
   jmp drawP1Done
-movingDownP1:
+drawDownP1:
   lda #$3
 drawP1Done:
   sta (p1PaddleL), y
-  lda #true
   rts
 
 drawP2:
@@ -248,7 +247,6 @@ movingDownP2:
   lda #$3
 drawP2Done:
   sta (p2PaddleL), y
-  lda #true
   rts
 
 ; Draws one pixel above the current position of the paddle.
