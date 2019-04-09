@@ -5,6 +5,8 @@ define p1PaddleL    $02 ; screen location of P1's paddle, low byte
 define p1PaddleH    $03 ; screen location of P1's paddle, high byte
 define p2PaddleL    $04 ; screen location of P2's paddle, low byte
 define p2PaddleH    $05 ; screen location of P2's paddle, high byte
+define tmpL         $06 ; temporary address storage, low byte
+define tmpH         $07 ; temporary address storage, high byte
 
 ; Directions (each using a separate bit)
 define movingUp     $1
@@ -22,18 +24,26 @@ define ASCII_l      $6C
 define sysRandom    $fe
 define sysLastKey   $ff
 
+; Colors
+define black        $00
+define white        $01
+
 ; Consts
+define false        $00
+define true         $01
+
 define rowLen       $20
+define paddleLen    $05
 
 define minPosP1L    $21 ; Low byte of min bound of P1's position.
 define minPosP1H    $02 ; High byte of min bound of P1's position.
 define minPosP2L    $3E ; Low byte of min bound of P2's position.
-define minPosP2H    #02 ; High byte of min bound of P2's position.
+define minPosP2H    $02 ; High byte of min bound of P2's position.
 
-define maxPosP1L    $C1 ; Low byte of max bound of P1's position.
+define maxPosP1L    $21 ; Low byte of max bound of P1's position.
 define maxPosP1H    $05 ; High byte of max bound of P1's position.
-define maxPosP2L    $DE ; Low byte of max bound of P2's position.
-define maxPosP2H    #05 ; High byte of max bound of P2's position.
+define maxPosP2L    $3E ; Low byte of max bound of P2's position.
+define maxPosP2H    $05 ; High byte of max bound of P2's position.
 
 
   jsr init
@@ -86,29 +96,124 @@ p2DownKey:
   sta p2Direction
   rts
 
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+
+; Returns if a move is needed.
+; Stores 1 in A if a move is needed.
+; Stores 0 in A if move is not needed.
 updateP1:
   ldx p1Direction
   cpx #movingUp
   beq movingUpP1
   cpx #movingDown
   beq movingDownP1
+  lda #false
   rts
 movingUpP1:
+  ; Bounds check
+  ; if paddle position == min position, return
+  lda p1PaddleL
+  cmp minPosP1L
+  bne movingUpP1Do
+  lda p1PaddleH
+  cmp minPosP1H
+  bne movingUpP1Do
+  lda #false
+  rts
+movingUpP1Do:
+  sec ; set carry to indicate no borrow happened
+  lda p1PaddleL
+  sbc #rowLen
+  sta p1PaddleL
+  lda p1PaddleH
+  sbc #$0
+  sta p1PaddleH
+  lda #true
   rts
 movingDownP1:
-  clc
+  ; Bounds check
+  ; if paddle position == max position, return
+  lda p1PaddleL
+  cmp maxPosP1L
+  bne movingDownP1Do
+  lda p1PaddleH
+  cmp maxPosP1H
+  bne movingDownP1Do
+  lda #false
+  rts
+movingDownP1Do:
+  clc ; clear carry to indicate no carry to start
   lda p1PaddleL
   adc #rowLen
   sta p1PaddleL
+  lda p1PaddleH
   adc #$0
   sta p1PaddleH
+  lda #true
   rts
 
 updateP2:
-  nop
   rts
 
+; Draw Player
+;
+; Move the paddle by 1 pixel vertically.
+; This subroutine erases 1 pixel in the opposite direction of the paddle's
+; movement and draws one pixel in the direction of the paddle's movement.
+
 drawP1:
+;   ; Prep arguments for calling drawAbovePaddle or drawBelowPaddle
+;   lda p1PaddleH
+;   pha
+;   lda p1PaddleL
+;   pha
+;   ; Branch
+;   ldx p1Direction
+;   cpx #movingUp
+;   beq drawMovingUpP1
+;   cpx #movingDown
+;   beq drawMovingDownP1
+;   rts
+; drawMovingUpP1:
+;   lda #white
+;   pha
+;   jsr drawAbovePaddle
+;   lda #black
+;   pha
+;   jsr drawBelowPaddle
+;   rts
+; drawMovingDownP1:
+;   lda #black
+;   pha
+;   jsr drawAbovePaddle
+;   lda #white
+;   pha
+;   jsr drawBelowPaddle
+;   rts
   ldy #0 ; y coordinate
   lda #0 ; paddle color
   ldx p1Direction
@@ -124,6 +229,7 @@ movingDownP1:
   lda #$3
 drawP1Done:
   sta (p1PaddleL), y
+  lda #true
   rts
 
 drawP2:
@@ -131,9 +237,9 @@ drawP2:
   lda #0 ; paddle color
   ldx p2Direction
   cpx #movingUp
-  beq upColorP2
+  beq movingUpP2
   cpx #movingDown
-  beq downColorP2
+  beq movingDownP2
   jmp drawP2Done
 movingUpP2:
   lda #$8
@@ -142,13 +248,45 @@ movingDownP2:
   lda #$3
 drawP2Done:
   sta (p2PaddleL), y
+  lda #true
+  rts
+
+; Draws one pixel above the current position of the paddle.
+; Assumes this function will pull all arguments off the stack.
+; Arguments
+;     * color: color to be drawn (top of stack)
+;     * paddlePosL: top coordinate of paddle, low byte
+;     * paddlePosH: top coordinate of paddle, high byte
+drawAbovePaddle:
+  ; Calculate the screen position of the pixel above the paddle
+  pla ; color
+  tax ; color stored in x
+  pla ; paddlePosL
+  sec
+  sbc #rowLen
+  sta tmpL
+  pla ; paddlePosH
+  sbc #$0
+  sta tmpH
+  ; Draw pixel
+  ldy #$0 ; clear y to be used in indirect offset addressing mode
+  txa ; move color into accumulator
+  sta (tmpL), y
+  rts
+
+drawBelowPaddle:
   rts
 
 loop:
   jsr readInput ; Read in the last two key presses to catch near
   jsr readInput ; simultaneous key presses.
   jsr updateP1
-  jsr updateP2
+  cmp #false
+  beq p2Loop
   jsr drawP1
+p2Loop:
+  jsr updateP2
+  cmp #false
+  beq loop
   jsr drawP2
   jmp loop
