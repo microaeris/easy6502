@@ -45,9 +45,18 @@ define maxPosP1H    $05 ; High byte of max bound of P1's position.
 define maxPosP2L    $3E ; Low byte of max bound of P2's position.
 define maxPosP2H    $05 ; High byte of max bound of P2's position.
 
+define 5RowOffset   $A0
 
+  jsr resetHandler
   jsr init
   jsr loop
+
+
+resetHandler:
+  sei
+  cld ;select binary mode
+  ldx #$ff
+  txs ;initialize stack pointer
 
 init:
   lda #minPosP1H
@@ -186,64 +195,64 @@ nop
 nop
 
 drawP1:
-;   ; Prep arguments for calling drawAbovePaddle or drawBelowPaddle
-;   lda p1PaddleH
-;   pha
-;   lda p1PaddleL
-;   pha
-;   ; Branch
-;   ldx p1Direction
-;   cpx #movingUp
-;   beq drawMovingUpP1
-;   cpx #movingDown
-;   beq drawMovingDownP1
-;   rts
-; drawMovingUpP1:
-;   lda #white
-;   pha
-;   jsr drawAbovePaddle
-;   lda #black
-;   pha
-;   jsr drawBelowPaddle
-;   rts
-; drawMovingDownP1:
-;   lda #black
-;   pha
-;   jsr drawAbovePaddle
-;   lda #white
-;   pha
-;   jsr drawBelowPaddle
-;   rts
-  ldy #0 ; y coordinate
-  lda #0 ; paddle color
+  ; Prep arguments for calling drawAbovePaddle or drawBelowPaddle
+  lda p1PaddleH
+  pha
+  lda p1PaddleL
+  pha
+  ; Branch
   ldx p1Direction
   cpx #movingUp
-  beq drawUpP1
+  beq drawMovingUpP1
   cpx #movingDown
-  beq drawDownP1
-  jmp drawP1Done
-drawUpP1:
-  lda #$8
-  jmp drawP1Done
-drawDownP1:
-  lda #$3
-drawP1Done:
-  sta (p1PaddleL), y
+  beq drawMovingDownP1
   rts
+drawMovingUpP1:
+  lda #white
+  pha
+  jsr drawAbovePaddle
+  lda #black
+  pha
+  jsr drawBelowPaddle
+  rts
+drawMovingDownP1:
+  lda #black
+  pha
+  jsr drawAbovePaddle
+  lda #white
+  pha
+  jsr drawBelowPaddle
+  rts
+;   ldy #0 ; y coordinate
+;   lda #0 ; paddle color
+;   ldx p1Direction
+;   cpx #movingUp
+;   beq drawUpP1
+;   cpx #movingDown
+;   beq drawDownP1
+;   jmp drawP1Done
+; drawUpP1:
+;   lda #$8
+;   jmp drawP1Done
+; drawDownP1:
+;   lda #$3
+; drawP1Done:
+;   sta (p1PaddleL), y
+;   rts
 
 drawP2:
   ldy #0 ; y coordinate
   lda #0 ; paddle color
   ldx p2Direction
   cpx #movingUp
-  beq movingUpP2
+  beq drawUpP2
   cpx #movingDown
-  beq movingDownP2
+  beq drawDownP2
   jmp drawP2Done
-movingUpP2:
+drawUpP2:
   lda #$8
   jmp drawP2Done
-movingDownP2:
+drawDownP2:
   lda #$3
 drawP2Done:
   sta (p2PaddleL), y
@@ -267,12 +276,26 @@ drawAbovePaddle:
   sbc #$0
   sta tmpH
   ; Draw pixel
-  ldy #$0 ; clear y to be used in indirect offset addressing mode
+  ldy #$0 ; clear y so it can be used in indirect offset addressing mode
   txa ; move color into accumulator
   sta (tmpL), y
   rts
 
 drawBelowPaddle:
+  ; Calculate the screen position of the pixel below the paddle
+  pla ; color
+  tax ; color stored in x
+  pla ; paddlePosL
+  clc
+  adc #5RowOffset
+  sta tmpL
+  pla ; paddlePosH
+  adc #$0
+  sta tmpH
+  ; Draw pixel
+  ldy #$0 ; clear y so it can be used in indirect offset addressing mode
+  txa ; move color into accumulator
+  sta (tmpL), y
   rts
 
 loop:
