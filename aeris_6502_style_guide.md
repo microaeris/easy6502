@@ -3,21 +3,39 @@
 ## Data Stack
 
 The end of the zero page will be dedicated as a data stack. Starting from $00FF 
-and growing towards $0000, temporary data can be pushed onto this stack. A 
-register must contain the data stack point (`DSP`) to point to the top of the 
-data stack. The max depth of the data stack should be kept to 32 bytes.
+and growing towards $0000, temporary data can be pushed onto this stack. The max 
+depth of the data stack should be kept to 32 bytes.
+
+The data stack pointer (DSP) is located at $0000 and contains the byte address 
+representing the top of the data stack, which is the next free address that can 
+be written to. Before calling any subroutine, the DSP must be updated.
+
+If calling a subroutine that uses the data stack, the DSP must be copied into a 
+register (usually `X`) before jumping to the subroutine.
+
+Reasoning: Even if the immediate subroutine doesn't use the data stack, an 
+indirectly called subroutine may need to use it. If so, the indirect subroutine 
+must know the next free address of the data stack.
+
+### Example
 
 ```
+    ; Init
+    define DSP $00
+    lda #$FF
+    sta DSP
+
     ; Load DSP
-    ldx #$FF 
+    ldx DSP 
 
     ; Push value to data stack
+    lda #$55
     sta $00,x
     dex
 
     ; Pull value from data stack
-    lda $00,x
     inx
+    ldy $00,x
 ```
 
 Note: The Easy6502 emulator allocates $00FF and $00FE to system variables so the
@@ -48,8 +66,8 @@ If returning a bool, return the value via the carry bit. `SEC` to indicate true
 and `CLC` to indicate false.
 
 Reasoning: Evaluating the returned value simply requires 2 cycles when calling 
-either `BCS` or `BCC`. Returning a bool via any other means would require a load 
-and compare. 
+either `BCS` or `BCC`. Returning a bool via a register would result in a compare
+that also takes 2 cycles, but wastes 7 bits. 
 
 If returning multiple bytes, prioritize passing values via registers in the 
 following precedence.
