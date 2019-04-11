@@ -2,10 +2,10 @@
 
 ## Data Stack
 
-The end of the zero page will be dedicated as a data stack. Starting from $00FF, 
-temporary data can be pushed onto this stack. A register must contain the data 
-stack point (`DSP`) to point to the top of the data stack. The max depth of the 
-data stack should be kept to 32 bytes.
+The end of the zero page will be dedicated as a data stack. Starting from $00FF 
+and growing towards $0000, temporary data can be pushed onto this stack. A 
+register must contain the data stack point (`DSP`) to point to the top of the 
+data stack. The max depth of the data stack should be kept to 32 bytes.
 
 ```
     ; Load DSP
@@ -23,9 +23,9 @@ data stack should be kept to 32 bytes.
 Note: The Easy6502 emulator allocates $00FF and $00FE to system variables so the
 data stack must start at $00FD.
 
-## Calling convention
+## Calling Convention
 
-### Subroutine parameters 
+### Subroutine Parameters 
 When passing fewer than 3 bytes as parameters, use registers in the following 
 precedence.
 * `A`
@@ -33,15 +33,16 @@ precedence.
 * `Y`
 
 If the routine receives more than 3 bytes as parameters, use `X` as a pointer to
-the data stack located in the zero page. A subroutine cannot deallocate values
-the caller has placed on the stack. Upon return, any values a callee wrote to 
-the data stack will be considered discarded unless the subroutine returns a 
-higher (closer to $0000) DSP.
+the data stack, which is located in the zero page. A subroutine cannot 
+deallocate values the caller has placed on the stack. Upon return, any values a 
+callee wrote to the data stack will be considered discarded unless the 
+subroutine returns a higher (closer to $0000) DSP.
 
-Reasoning: ZP instructions are executed in fewer cycles and have more 
-flexibility due to having specially dedicated addressing modes. 
+Reasoning: ZP instructions are executed in fewer cycles than instructions 
+operating on the native stack. In addition, operations on the ZP have more 
+flexibility due to having multiple specially dedicated addressing modes. 
 
-### Return values
+### Return Values
 
 If returning a bool, return the value via the carry bit. `SEC` to indicate true 
 and `CLC` to indicate false.
@@ -51,7 +52,7 @@ either `BCS` or `BCC`. Returning a bool via any other means would require a load
 and compare. 
 
 If returning multiple bytes, prioritize passing values via registers in the 
-following precedence. 
+following precedence.
 * `A`
 * `X`
 * `Y`
