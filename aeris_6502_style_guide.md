@@ -4,18 +4,19 @@
 
 The end of the zero page will be dedicated as a data stack. Starting from $00FF 
 and growing towards $0000, temporary data can be pushed onto this stack. The max 
-depth of the data stack should be kept to 32 bytes.
+depth of the data stack should be kept to 32 bytes. The data stack will be 
+primarily used to store parameters and return values.
 
 The data stack pointer (DSP) is located at $0000 and contains the byte address 
 representing the top of the data stack, which is the next free address that can 
 be written to. Before calling any subroutine, the DSP must be updated.
 
-If calling a subroutine that uses the data stack, the DSP must be copied into a 
-register (usually `X`) before jumping to the subroutine.
-
 Reasoning: Even if the immediate subroutine doesn't use the data stack, an 
 indirectly called subroutine may need to use it. If so, the indirect subroutine 
 must know the next free address of the data stack.
+
+If calling a subroutine that uses the data stack, the DSP must be copied into a 
+register (usually `X`) before jumping to the subroutine.
 
 ### Example
 
@@ -51,10 +52,10 @@ precedence.
 * `Y`
 
 If the routine receives more than 3 bytes as parameters, use `X` as a pointer to
-the data stack, which is located in the zero page. A subroutine cannot 
-deallocate values the caller has placed on the stack. Upon return, any values a 
-callee wrote to the data stack will be considered discarded unless the 
-subroutine returns a higher (closer to $0000) DSP.
+the data stack. A subroutine cannot deallocate values the caller has placed on 
+the stack. Upon return, any values a callee wrote to the data stack will be 
+considered discarded unless the subroutine returns a higher (closer to $0000) 
+DSP.
 
 Reasoning: ZP instructions are executed in fewer cycles than instructions 
 operating on the native stack. In addition, operations on the ZP have more 
