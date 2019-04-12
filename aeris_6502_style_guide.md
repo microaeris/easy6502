@@ -2,46 +2,59 @@
 
 ## Data Stack
 
-The end of the zero page will be dedicated as a data stack. Starting from $00FF 
-and growing towards $0000, temporary data can be pushed onto this stack. The max 
-depth of the data stack should be kept to 32 bytes. The data stack will be 
-primarily used to store subroutine parameters and return values.
+The data stack will be a software stack that is located in RAM from $0200-$0220 
+(32 bytes max depth). Starting from $0200 and growing downwards towards larger 
+addresses, parameters and return values can be pushed onto this stack. 
 
-The data stack pointer (DSP) is located at $0000 and contains the byte address 
-representing the top of the data stack, which is the next free address that can 
-be written to. Before calling any subroutine, the DSP must be updated.
+Reasoning: The data stack is a separate block of memory from the hardware stack 
+for programming simplicity. The other option would be to play games with 
+intermixing return addresses and subroutine parameters on the same stack, which 
+quickly becomes messy.
 
-Reasoning: Even if the immediate subroutine doesn't use the data stack, an 
-indirectly called subroutine may need to use it. If so, the indirect subroutine 
-must know the next free address of the data stack.
+The data stack pointer (DSP) is a zero page (ZP) variable that contains the 
+address that points to the top of the data stack, which is the next free address 
+that can be written to. DSP is two bytes long and is located at $0000-$0001.
 
-If calling a subroutine that refers to the data stack for subroutine parameters, 
-the DSP must be copied into a register (usually `X`) before jumping to the 
-subroutine.
+One can access values on the data stack with indirect Y addressing mode.
+
+Reasoning: The data stack is not located in the zero page since the ZP should be
+saved for variables and operations that can take advantage of direct zero page 
+addressing. `lda` using indirect y addressing costs one additional cycle when 
+compared to using a software stack on the ZP and accessing with absolute X 
+addressing (or ZP,X). Parameter access is not a frequent enough use case to 
+justify the space that would be required to store it in the ZP.
 
 ### Example
 
 ```
-    ; Init
     define DSP $00
-    lda #$FF
+
+    ; Init - Load $0200 into the DSP
+    lda #$00
     sta DSP
-
-    ; Load DSP
-    ldx DSP 
-
+    lda #$02
+    sta $01 
+ 
     ; Push value to data stack
-    lda #$55
-    sta $00,x
-    dex
+    lda #$55 ; Data 
+    ldy #$00
+    sta (DSP),y
+    inc DSP
 
     ; Pull value from data stack
-    inx
-    ldy $00,x
+    ldy #$00
+    dec DSP
+    lda (DSP),y
 ```
 
-Note: The Easy6502 emulator allocates $00FF and $00FE to system variables so the
-data stack must start at $00FD.
+## Return Stack
+
+The 'return stack' is actually the 6502 hardware stack. It is called 'return 
+stack', because it contains mostly return address of subroutines. It can be (and
+is) used also as temporary data storage (for example saving a register). It is 
+not used for parameters and variables.
+
+(As taken from [cc65](https://github.com/cc65/wiki/wiki/Parameter-and-return-stacks#the-return-stack).)
 
 ## Calling Convention
 
@@ -52,15 +65,11 @@ precedence.
 * `X`
 * `Y`
 
-If the routine receives more than 3 bytes as parameters, use `X` as a pointer to
-the data stack. A subroutine cannot deallocate values the caller has placed on 
-the stack. Upon return, any values a callee wrote to the data stack will be 
-considered discarded unless the subroutine returns a higher (closer to $0000) 
-DSP.
+If the routine receives more than 3 bytes as parameters, use the data stack
+as described above. A subroutine is required to pull off all parameters from the 
+stack before returning.
 
-Reasoning: ZP instructions are executed in fewer cycles than instructions 
-operating on the native stack. In addition, operations on the ZP have more 
-flexibility due to having multiple specially dedicated addressing modes. 
+Reasoning: To explicitly delineate responsibility of caller vs. callee.
 
 ### Return Values
 
@@ -77,9 +86,8 @@ following precedence.
 * `X`
 * `Y`
 
-If more than three bytes need to be returned, then `X` will store a pointer to
-the data stack. If `X` was used as a DSP parameter, then the return value of `X`
-must be higher (closer to $0000) than its input value.
+If more than three bytes need to be returned, then the data stack can be used as 
+described above.
 
 ## Reset Handler
 
