@@ -4,7 +4,7 @@
 
 The data stack will be a software stack that is located in RAM from $0200-$0220 
 (32 bytes max depth). Starting from $0200 and growing downwards towards larger 
-addresses, parameters and return values can be pushed onto this stack. 
+addresses, this stack should be used to store parameters and return values.
 
 Reasoning: The data stack is a separate block of memory from the hardware stack 
 for programming simplicity. The other option would be to play games with 
@@ -19,7 +19,7 @@ One can access values on the data stack with indirect Y addressing mode.
 
 Reasoning: The data stack is not located in the zero page since the ZP should be
 saved for variables and operations that can take advantage of direct zero page 
-addressing. `lda` using indirect y addressing costs one additional cycle when 
+addressing. `lda` using indirect Y addressing costs one additional cycle when 
 compared to using a software stack on the ZP and accessing with absolute X 
 addressing (or ZP,X). Parameter access is not a frequent enough use case to 
 justify the space that would be required to store it in the ZP.
