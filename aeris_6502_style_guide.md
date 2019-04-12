@@ -5,7 +5,7 @@
 The end of the zero page will be dedicated as a data stack. Starting from $00FF 
 and growing towards $0000, temporary data can be pushed onto this stack. The max 
 depth of the data stack should be kept to 32 bytes. The data stack will be 
-primarily used to store parameters and return values.
+primarily used to store subroutine parameters and return values.
 
 The data stack pointer (DSP) is located at $0000 and contains the byte address 
 representing the top of the data stack, which is the next free address that can 
@@ -15,8 +15,9 @@ Reasoning: Even if the immediate subroutine doesn't use the data stack, an
 indirectly called subroutine may need to use it. If so, the indirect subroutine 
 must know the next free address of the data stack.
 
-If calling a subroutine that uses the data stack, the DSP must be copied into a 
-register (usually `X`) before jumping to the subroutine.
+If calling a subroutine that refers to the data stack for subroutine parameters, 
+the DSP must be copied into a register (usually `X`) before jumping to the 
+subroutine.
 
 ### Example
 
@@ -67,8 +68,8 @@ If returning a bool, return the value via the carry bit. `SEC` to indicate true
 and `CLC` to indicate false.
 
 Reasoning: Evaluating the returned value simply requires 2 cycles when calling 
-either `BCS` or `BCC`. Returning a bool via a register would result in a compare
-that also takes 2 cycles, but wastes 7 bits. 
+either `BCS` or `BCC`. Returning a bool via a register would require a compare
+and then branch. 
 
 If returning multiple bytes, prioritize passing values via registers in the 
 following precedence.
@@ -93,4 +94,5 @@ lines of code in a reset handler would appear like so.
     txs          ;initialize stack pointer
 ```
 
-Reasoning: `SP` is not initialized upon reset. (Nor are registers A, X and Y.)
+Reasoning: `SP` is not initialized upon reset. (Nor are registers `A`, `X` and 
+`Y`.)
