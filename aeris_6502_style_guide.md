@@ -1,12 +1,18 @@
 # Aeris' 6502 Style Guide
 
+This style guide aims to provide guidelines for consistency and best practices
+within a 6502 program. 
+
+The two stack scheme described below is borrowed from cc65's treatment of 
+parameters and return values.
+
 ## Data Stack
 
 The data stack will be a software stack that is located in RAM from $0200-$0220 
 (32 bytes max depth). Starting from $0200 and growing downwards towards larger 
 addresses, this stack should be used to store parameters and return values.
 
-Reasoning: The data stack is a separate block of memory from the hardware stack 
+Rationale: The data stack is a separate block of memory from the hardware stack 
 for programming simplicity. The other option would be to play games with 
 intermixing return addresses and subroutine parameters on the same stack, which 
 quickly becomes messy.
@@ -17,7 +23,7 @@ that can be written to. DSP is two bytes long and is located at $0000-$0001.
 
 One can access values on the data stack with indirect Y addressing mode.
 
-Reasoning: The data stack is not located in the zero page since the ZP should be
+Rationale: The data stack is not located in the zero page since the ZP should be
 saved for variables and operations that can take advantage of direct zero page 
 addressing. `lda` using indirect Y addressing costs one additional cycle when 
 compared to using a software stack on the ZP and accessing with absolute X 
@@ -69,14 +75,14 @@ If the routine receives more than 3 bytes as parameters, use the data stack
 as described above. A subroutine is required to pull off all parameters from the 
 stack before returning.
 
-Reasoning: To explicitly delineate responsibility of caller vs. callee.
+Rationale: To explicitly delineate responsibility of caller vs. callee.
 
 ### Return Values
 
 If returning a bool, return the value via the carry bit. `SEC` to indicate true 
 and `CLC` to indicate false.
 
-Reasoning: Evaluating the returned value simply requires 2 cycles when calling 
+Rationale: Evaluating the returned value simply requires 2 cycles when calling 
 either `BCS` or `BCC`. Returning a bool via a register would require a compare
 and then branch. 
 
@@ -96,11 +102,96 @@ Initialize the stack pointer to a known value (usually $FF in the case of the
 lines of code in a reset handler would appear like so.
 
 ```
-    sei             
-    cld          ;select binary mode
+    sei          ; Disable interrupts
     ldx #$ff
-    txs          ;initialize stack pointer
+    txs          ; Initialize stack pointer
+    cld          ; Select binary mode
+    lda #$00     ; Initialize registers to 0
+    tax    
+    tay
+    clc          ; Clear carry
+    cli          ; Enable interrupts
 ```
 
-Reasoning: `SP` is not initialized upon reset. (Nor are registers `A`, `X` and 
-`Y`.)
+Rationale: `SP` is not initialized upon reset. (Nor are registers `A`, `X`, `Y`,
+and `D` status flag.)
+
+## Branch Conditions
+
+When writing branching conditions, branch on the less expected result (i.e. the 
+edge case). The exception to this rule is branching in loops where one must 
+repeatedly branch on the expected condition until the loop terminates.
+
+Rationale: A branch test that fails takes one less cycle to execute than one a
+branch test that succeeds. 
+
+### Examples
+
+```
+    adc $24
+    bcs TOOBIG
+
+    sbc $24
+    bcc TOOSML
+
+LOOP
+    ...
+    dex
+    bne LOOP
+```
+
+## Incrementing and Decrementing Index Registers
+
+To increment or decrement the X or Y registers by 5 or more, do the arithmetic 
+to the accumulator. For increments and decrements less than 5, do it with the 
+increment and decrement instructions. 
+
+Rationale: 
+
+```
+    ; Increment with INX
+    ; Total: 5 bytes, 10 cycles
+
+    inx
+    inx
+    inx
+    inx
+    inx
+
+    ; Increment with accumulator
+    ; Total: 5 bytes, 8 cycles
+
+    txa
+    clc
+    adc #$05
+    tax
+```
+
+cf. Page 70 in 6502 Software Design.
+
+## Saving All Registers on Hardware Stack
+
+Must be done in the following order.
+
+```
+    ; Saving register values
+    php 
+    pha 
+    txa
+    pha 
+    tya
+    pha
+
+
+    ; Restoring register values
+    pla
+    tay
+    pla 
+    tax
+    pla
+    plp
+```
+
+
+
+

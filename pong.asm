@@ -53,10 +53,15 @@ define 5RowOffset   $A0
 
 
 resetHandler:
-  sei
-  cld ;select binary mode
+  sei          ; Disable interrupts
   ldx #$ff
-  txs ;initialize stack pointer
+  txs          ; Initialize stack pointer
+  cld          ; Select binary mode
+  lda #$00     ; Initialize registers to 0
+  tax
+  tay
+  clc          ; Clear carry
+  cli          ; Enable interrupts
 
 init:
   lda #minPosP1H
