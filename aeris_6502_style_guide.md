@@ -67,15 +67,17 @@ not used for parameters and variables.
 ### Subroutine Parameters 
 When passing fewer than 3 bytes as parameters, use registers in the following 
 precedence.
-* `A`
 * `X`
 * `Y`
+* `A`
 
 If the routine receives more than 3 bytes as parameters, use the data stack
 as described above. A subroutine is required to pull off all parameters from the 
 stack before returning.
 
-Rationale: To explicitly delineate responsibility of caller vs. callee.
+Rationale: To explicitly delineate responsibility of caller vs. callee. `A` is 
+to be used last since it will more likely be needed in the called subroutine's 
+process.
 
 ### Return Values
 
@@ -88,9 +90,9 @@ and then branch.
 
 If returning multiple bytes, prioritize passing values via registers in the 
 following precedence.
-* `A`
 * `X`
 * `Y`
+* `A`
 
 If more than three bytes need to be returned, then the data stack can be used as 
 described above.
